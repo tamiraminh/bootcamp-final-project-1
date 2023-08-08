@@ -9,6 +9,7 @@ import (
 	"github.com/evermos/boilerplate-go/event/producer"
 	"github.com/evermos/boilerplate-go/infras"
 	"github.com/evermos/boilerplate-go/internal/domain/foobarbaz"
+	"github.com/evermos/boilerplate-go/internal/domain/product"
 	"github.com/evermos/boilerplate-go/internal/handlers"
 	"github.com/evermos/boilerplate-go/transport/http"
 	"github.com/evermos/boilerplate-go/transport/http/middleware"
@@ -39,9 +40,20 @@ var domainFooBarBaz = wire.NewSet(
 	wire.Bind(new(producer.Producer), new(*producer.SNSProducer)),
 )
 
+
+var domainProduct = wire.NewSet(
+	product.ProvideProductServiceImpl,
+	wire.Bind(new(product.ProductService), new(*product.ProductServiceImpl)),
+
+	product.ProvideProductRepositoryMySQL,
+	wire.Bind(new(product.ProductRepository), new(*product.ProductRepositoryMySQL)),
+	
+)
+
 // Wiring for all domains.
 var domains = wire.NewSet(
 	domainFooBarBaz,
+	domainProduct,
 )
 
 var authMiddleware = wire.NewSet(
@@ -50,8 +62,9 @@ var authMiddleware = wire.NewSet(
 
 // Wiring for HTTP routing.
 var routing = wire.NewSet(
-	wire.Struct(new(router.DomainHandlers), "FooBarBazHandler"),
+	wire.Struct(new(router.DomainHandlers), "FooBarBazHandler", "ProductHandler"),
 	handlers.ProvideFooBarBazHandler,
+	handlers.ProvideProductHandler,
 	router.ProvideRouter,
 )
 

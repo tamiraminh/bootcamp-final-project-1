@@ -115,6 +115,7 @@ func (h *HTTP) respondToSigterm(done chan os.Signal) {
 
 func (h *HTTP) setupMiddleware() {
 	h.mux.Use(middleware.Logger)
+	h.mux.Use(middleware.RequestID)
 	h.mux.Use(middleware.Recoverer)
 	h.mux.Use(h.serverStateMiddleware)
 	h.setupCORS()
