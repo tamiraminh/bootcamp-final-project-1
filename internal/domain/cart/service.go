@@ -80,7 +80,17 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 
 
 	} else {
-		existingItem[0].Quantity += quantity
+		cart.Update(userID)
+		err = existingItem[0].Update(CartItem{ 
+			CartID: cart.ID,
+			ProductID: productID,
+			Quantity: quantity,
+		}, userID)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return
+		}
+
 		err = s.CartRepository.UpdateCartItem(existingItem[0])
 		if err != nil {
 			logger.ErrorWithStack(err)
