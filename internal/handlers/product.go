@@ -1,13 +1,17 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/evermos/boilerplate-go/internal/domain/product"
+	"github.com/evermos/boilerplate-go/shared"
+	"github.com/evermos/boilerplate-go/shared/failure"
 	"github.com/evermos/boilerplate-go/transport/http/middleware"
 	"github.com/evermos/boilerplate-go/transport/http/response"
 	"github.com/go-chi/chi"
+	"github.com/gofrs/uuid"
 )
 
 type ProductHandler struct {
@@ -28,15 +32,44 @@ func (h *ProductHandler) Router(r chi.Router) {
 			r.Get("/", h.ResolveAllProducts)
 		})
 
-		// r.Group(func(r chi.Router) {
-		// 	r.Use(h.AuthMiddleware.Password)
-		// 	r.Post("/foo", h.CreateFoo)
-		// 	r.Delete("/foo/{id}", h.SoftDeleteFoo)
-		// 	r.Put("/foo/{id}", h.UpdateFoo)
-		// })
+		r.Group(func(r chi.Router) {
+			r.Use(h.AuthMiddleware.ValidateJWT)
+			r.Use(h.AuthMiddleware.RoleAdminCheck)
+			r.Post("/", h.CreateProduct)
+		})
 
 	})
 }
+
+func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var requestFormat product.ProductRequestFormat
+	err := decoder.Decode(&requestFormat)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	claims, ok := r.Context().Value(middleware.ClaimsKey("claims")).(shared.Claims)
+	if !ok {
+		response.WithMessage(w, http.StatusUnauthorized, "Unauthorized")
+	}
+
+	id, err := uuid.FromString(claims.UserId)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	product, err := h.ProductService.Create(requestFormat, id )
+	if err != nil {
+		response.WithError(w, err)
+		return
+	}
+
+	response.WithJSON(w, http.StatusCreated, product)
+}
+
 
 func (h *ProductHandler) ResolveAllProducts(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
@@ -45,13 +78,20 @@ func (h *ProductHandler) ResolveAllProducts(w http.ResponseWriter, r *http.Reque
 		response.WithMessage(w, http.StatusBadRequest, "Must have page queryparam")
 		return	
 	}
+	if pageInt < 0 {
+		response.WithMessage(w, http.StatusBadRequest, "page must be equal or greater to zero")
+		return
+	}
 	limitStr := r.URL.Query().Get("limit")
 	limitInt, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.WithMessage(w, http.StatusBadRequest, "Must have limit queryparam")
 		return	
 	}
-
+	if limitInt <= 0 {
+		response.WithMessage(w, http.StatusBadRequest, "limit must be greater to zero")
+		return
+	}
 	products, err := h.ProductService.ResolveAllProducts(pageInt, limitInt)
 	if err != nil {
 		response.WithError(w, err)

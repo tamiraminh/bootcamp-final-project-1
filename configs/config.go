@@ -22,6 +22,8 @@ type Config struct {
 		Name     string `mapstructure:"NAME"`
 		Revision string `mapstructure:"REVISION"`
 		URL      string `mapstructure:"URL"`
+		AuthServiceBaseURL 		string `mapstructure:"AUTH_SERVICE_BASE_URL"`
+		AuthServiceValidatePath string `mapstructure:"AUTH_SERVICE_VALIDATE_URL"`
 	}
 
 	Cache struct {
