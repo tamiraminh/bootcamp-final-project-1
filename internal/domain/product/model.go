@@ -35,7 +35,6 @@ func (p Product) MarshalJSON() ([]byte, error) {
 }
 
 
-// NewFromRequestFormat creates a new Foo from its request format.
 func (p Product) NewFromRequestFormat(req ProductRequestFormat, userID uuid.UUID) (newProduct Product, err error) {
 	productID, _ := uuid.NewV4()
 	newProduct = Product{
