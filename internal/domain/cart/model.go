@@ -46,6 +46,15 @@ func (c *Cart) Validate() (err error) {
 	return validator.Struct(c)
 }
 
+func (c *Cart) Update(userID uuid.UUID) (err error){
+	c.UpdatedAt = null.TimeFrom(time.Now())
+	c.UpdatedBy = nuuid.From(userID)
+
+	err = c.Validate()
+
+	return
+}
+
 
 
 func (c Cart) ToResponseFormat() CartResponseFormat {
@@ -89,7 +98,7 @@ type CartResponseFormat struct {
 type CartItem struct {
 	CartID			uuid.UUID		`db:"cart_id" validate:"required"`
 	ProductID		uuid.UUID		`db:"product_id" validate:"required"`
-	Quantity		int		`db:"quantity" validate:"required"`
+	Quantity		int			`db:"quantity"`
 	CreatedAt		time.Time   `db:"created_at" validate:"required"`
 	CreatedBy		uuid.UUID   `db:"created_by" validate:"required"`
 	UpdatedAt		null.Time   `db:"updated_at"`
@@ -119,6 +128,19 @@ func (ci CartItem) NewFromRequestFormat(req CartItemRequestFormat, userID uuid.U
 	}
 
 	err = ci.Validate()
+	return
+}
+
+func (ci *CartItem) Update(cartItem CartItem, userID uuid.UUID) (err error) {
+	ci.Quantity += cartItem.Quantity
+	if  ci.Quantity < 0 {
+		ci.Quantity = 0 
+	}
+	ci.UpdatedAt = null.TimeFrom(time.Now())
+	ci.UpdatedBy = nuuid.From(userID)
+
+	err = ci.Validate()
+
 	return
 }
 
