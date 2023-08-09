@@ -37,7 +37,7 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 	} 
 	if err == sql.ErrNoRows {
 		cartID, errUUID := uuid.NewV4()
-		if err != nil {
+		if errUUID != nil {
 			logger.ErrorWithStack(errUUID)
 			return 
 		}

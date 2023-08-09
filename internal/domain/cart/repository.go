@@ -8,6 +8,7 @@ import (
 	"github.com/evermos/boilerplate-go/shared/logger"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 )
 
 var cartQueries = struct {
@@ -99,7 +100,7 @@ func (r *CartRepositoryMySQL) ResolveCartByUserID(id uuid.UUID) (cart Cart, err 
 		cartQueries.selectCart+" WHERE user_id = ?",
 		id.String())
 	if err != nil && err == sql.ErrNoRows {
-		logger.ErrorWithStack(err)
+		log.Info().Msg(err.Error())
 		return
 	}
 	return
