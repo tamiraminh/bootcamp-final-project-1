@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evermos/boilerplate-go/configs"
+	"github.com/evermos/boilerplate-go/internal/domain/product"
 	"github.com/evermos/boilerplate-go/shared/logger"
 	"github.com/gofrs/uuid"
 )
@@ -17,11 +18,13 @@ type CartService interface {
 type CartServiceImpl struct {
 	CartRepository CartRepository
 	Config         *configs.Config
+	ProductService product.ProductService
 }
 
-func ProvideCartServiceImpl(cartRepository CartRepository, conf *configs.Config) *CartServiceImpl  {
+func ProvideCartServiceImpl(cartRepository CartRepository, conf *configs.Config, productService product.ProductService) *CartServiceImpl  {
 	s := new(CartServiceImpl)
 	s.CartRepository = cartRepository
+	s.ProductService = productService
 	s.Config = conf
 
 	return s
@@ -30,6 +33,13 @@ func ProvideCartServiceImpl(cartRepository CartRepository, conf *configs.Config)
 func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID uuid.UUID) (cart Cart, err error)  {
 	productID := requestFormat.ProductID
 	quantity := requestFormat.Quantity
+
+
+	_ , err = s.ProductService.ResolveProductByID(productID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
 
 	cart, err = s.CartRepository.ResolveCartByUserID(userID)
 	if err != sql.ErrNoRows && err != nil {
@@ -81,7 +91,6 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 
 
 	} else {
-		cart.Update(userID)
 		err = existingItem[0].Update(CartItem{ 
 			CartID: cart.ID,
 			ProductID: productID,
@@ -91,6 +100,7 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 			logger.ErrorWithStack(err)
 			return
 		}
+
 
 		err = s.CartRepository.UpdateCartItem(existingItem[0])
 		if err != nil {
@@ -105,7 +115,19 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 		return
 	}
 
+	for i := 0; i < len(items) ; i++ {
+		product, errProduct := s.ProductService.ResolveProductByID(items[i].ProductID)
+		if errProduct != nil {
+			logger.ErrorWithStack(errProduct)
+			return
+		}
+		items[i].UnitPrice = product.Price
+		items[i].Recalculate()
+	}
+
 	cart.AttachItems(items)
+	cart.Update(userID)
+
 	return
 
 }
@@ -125,7 +147,18 @@ func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err 
 		return
 	}
 
+	for i := 0; i < len(items) ; i++ {
+		product, errProduct := s.ProductService.ResolveProductByID(items[i].ProductID)
+		if errProduct != nil {
+			logger.ErrorWithStack(errProduct)
+			return
+		}
+		items[i].UnitPrice = product.Price
+		items[i].Recalculate()
+	}
+
 	cart.AttachItems(items)
+	cart.Recalculate()
 	return
 
 }

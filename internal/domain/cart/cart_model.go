@@ -19,6 +19,7 @@ type Cart struct {
 	UpdatedBy	nuuid.NUUID `db:"updated_by"`
 	DeletedAt	null.Time   `db:"deleted_at"`
 	DeletedBy	nuuid.NUUID `db:"deleted_by"`
+	TotalPrice	float64		`db:"-"`
 	Items		[]CartItem  `db:"-"`
 }
 
@@ -30,6 +31,17 @@ func (c *Cart) AttachItems(items []CartItem) Cart {
 		}
 	}
 	return *c
+}
+
+func (c *Cart) Recalculate() {
+	c.TotalPrice = float64(0)
+	recalculatedItems := make([]CartItem, 0)
+	for _, item := range c.Items {
+		item.Recalculate()
+		recalculatedItems = append(recalculatedItems, item)
+		c.TotalPrice += item.TotalPrice
+	}
+	c.Items = recalculatedItems
 }
 
 
@@ -50,6 +62,7 @@ func (c *Cart) Update(userID uuid.UUID) (err error){
 	c.UpdatedAt = null.TimeFrom(time.Now())
 	c.UpdatedBy = nuuid.From(userID)
 
+	c.Recalculate()
 	err = c.Validate()
 
 	return
@@ -67,6 +80,7 @@ func (c Cart) ToResponseFormat() CartResponseFormat {
 		UpdatedBy:     	c.UpdatedBy.Ptr(),
 		DeletedAt:      c.DeletedAt,
 		DeletedBy:     	c.DeletedBy.Ptr(),
+		TotalPrice:     c.TotalPrice,
 		Items:         	make([]CartItemResponseFormat, 0),
 	}
 
@@ -91,6 +105,7 @@ type CartResponseFormat struct {
 	UpdatedBy     	*uuid.UUID 		`json:"updated_by"`
 	DeletedAt     	null.Time  		`json:"deleted_at"`
 	DeletedBy     	*uuid.UUID 		`json:"deleted_by"`
+	TotalPrice		float64			`json:"total_price"`
 	Items           []CartItemResponseFormat `json:"items"`
 }
 
@@ -99,6 +114,8 @@ type CartItem struct {
 	CartID			uuid.UUID		`db:"cart_id" validate:"required"`
 	ProductID		uuid.UUID		`db:"product_id" validate:"required"`
 	Quantity		int			`db:"quantity"`
+	UnitPrice		float64		`db:"-"`
+	TotalPrice		float64		`db:"-"`
 	CreatedAt		time.Time   `db:"created_at" validate:"required"`
 	CreatedBy		uuid.UUID   `db:"created_by" validate:"required"`
 	UpdatedAt		null.Time   `db:"updated_at"`
@@ -114,6 +131,10 @@ func (ci CartItem) MarshalJSON() ([]byte, error) {
 func (ci *CartItem) Validate() (err error) {
 	validator := shared.GetValidator()
 	return validator.Struct(ci)
+}
+
+func (ci *CartItem) Recalculate() {
+	ci.TotalPrice = float64(ci.Quantity) * ci.UnitPrice
 }
 
 
@@ -133,9 +154,11 @@ func (ci CartItem) NewFromRequestFormat(req CartItemRequestFormat, userID uuid.U
 
 func (ci *CartItem) Update(cartItem CartItem, userID uuid.UUID) (err error) {
 	ci.Quantity += cartItem.Quantity
-	if  ci.Quantity < 0 {
-		ci.Quantity = 0 
+	if  ci.Quantity < 1 {
+		ci.Quantity = 1 
 	}
+	ci.UnitPrice = cartItem.UnitPrice
+	ci.TotalPrice = cartItem.TotalPrice
 	ci.UpdatedAt = null.TimeFrom(time.Now())
 	ci.UpdatedBy = nuuid.From(userID)
 
@@ -149,6 +172,7 @@ func (ci *CartItem) ToResponseFormat() CartItemResponseFormat {
 		CartID: 		ci.CartID,
 		ProductID:		ci.ProductID,
 		Quantity: 		ci.Quantity,
+		UnitPrice:      ci.UnitPrice,	
 		CreatedAt:      ci.CreatedAt,
 		CreatedBy:     	ci.CreatedBy,
 		UpdatedAt:      ci.UpdatedAt,
@@ -171,6 +195,8 @@ type CartItemResponseFormat struct {
 	CartID          uuid.UUID `json:"cartID" validate:"required"`
 	ProductID       uuid.UUID    `json:"productID" validate:"required"`
 	Quantity		int			`json:"quantity"`
+	UnitPrice		float64		`json:"unit_price"`
+	TotalPrice		float64		`json:"total_price"`
 	CreatedAt		time.Time   `json:"created_at" validate:"required"`
 	CreatedBy		uuid.UUID   `json:"created_by" validate:"required"`
 	UpdatedAt		null.Time   `json:"updated_at"`

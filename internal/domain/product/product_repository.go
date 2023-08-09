@@ -47,7 +47,7 @@ var productQueries = struct {
 type ProductRepository interface {
 	Create(product Product) (err error)
 	ExistsByID(id uuid.UUID) (exist bool, err error)
-	// ResolveByID(id uuid.UUID) (product Product, err error)
+	ResolveProductByID(id uuid.UUID) (product Product, err error)
 	ResolveAllProducts(page int, limit int) (products []Product, err error)
 }
 
@@ -127,6 +127,19 @@ func (r *ProductRepositoryMySQL) ResolveAllProducts(page, limit int) (products [
 	return
 }
 
+
+func (r *ProductRepositoryMySQL) ResolveProductByID(id uuid.UUID) (product Product, err error)  {
+	err = r.DB.Read.Get(
+		&product,
+		productQueries.selectProduct+" WHERE id = ?", id.String())
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+
+
+
+	return
+}
 
 
 
