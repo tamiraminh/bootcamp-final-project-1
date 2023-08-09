@@ -8,7 +8,8 @@ import (
 
 type ProductService interface {
 	Create(requestFormat ProductRequestFormat, userID uuid.UUID) (product Product, err error)
-	ResolveAllProducts(page int, limit int) (product []Product, err error)
+	ResolveAllProducts(page int, limit int) (products []Product, err error)
+	ResolveProductByID(id uuid.UUID) (product Product, err error)
 }
 
 type ProductServiceImpl struct {
@@ -47,6 +48,15 @@ func (s *ProductServiceImpl) Create(requestFormat ProductRequestFormat, userID u
 
 func (s *ProductServiceImpl) ResolveAllProducts(page int, limit int) (products []Product, err error) {
 	products, err = s.ProductRepository.ResolveAllProducts(page, limit)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (s *ProductServiceImpl) ResolveProductByID(id uuid.UUID) (product Product, err error)  {
+	product, err = s.ProductRepository.ResolveProductByID(id)
 	if err != nil {
 		return
 	}
