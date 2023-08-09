@@ -31,6 +31,7 @@ func (h *CartHandler) Router(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(h.AuthMiddleware.ValidateJWT)
 			r.Post("/", h.AddToCart)
+			r.Get("/", h.ResolveCartByUserID)
 		})
 
 
@@ -71,4 +72,27 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.WithJSON(w, http.StatusCreated, cart)
+}
+
+func (h *CartHandler) ResolveCartByUserID(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.ClaimsKey("claims")).(shared.Claims)
+	if !ok {
+		response.WithMessage(w, http.StatusUnauthorized, "Unauthorized")
+	}
+
+	id, err := uuid.FromString(claims.UserId)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+
+	cart,err := h.CartService.ResolveCartByUserID(id)
+	if err != nil {
+		response.WithError(w, err)
+		return
+	}
+
+	response.WithJSON(w, http.StatusCreated, cart)
+	
 }

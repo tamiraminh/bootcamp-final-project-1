@@ -11,6 +11,7 @@ import (
 
 type CartService interface {
 	AddToCart(requestFormat CartItemRequestFormat, userID uuid.UUID) (cart Cart, err error)
+	ResolveCartByUserID(userID uuid.UUID) (cart Cart, err error)
 }
 
 type CartServiceImpl struct {
@@ -97,6 +98,26 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 			return
 		}
 	}
+
+	items, err := s.CartRepository.ResolveCartItemsByCartID(cart.ID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	cart.AttachItems(items)
+	return
+
+}
+
+
+func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err error)  {
+	cart, err = s.CartRepository.ResolveCartByUserID(userID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	} 
+
 
 	items, err := s.CartRepository.ResolveCartItemsByCartID(cart.ID)
 	if err != nil {
