@@ -11,6 +11,7 @@ import (
 	"github.com/evermos/boilerplate-go/internal/domain/foobarbaz"
 	"github.com/evermos/boilerplate-go/internal/domain/product"
 	"github.com/evermos/boilerplate-go/internal/domain/cart"
+	"github.com/evermos/boilerplate-go/internal/domain/order"
 	"github.com/evermos/boilerplate-go/internal/handlers"
 	"github.com/evermos/boilerplate-go/transport/http"
 	"github.com/evermos/boilerplate-go/transport/http/middleware"
@@ -60,10 +61,19 @@ var domainCart = wire.NewSet(
 	
 )
 
+var domainOrder = wire.NewSet(
+	order.ProvideOrderServiceImpl,
+	wire.Bind(new(order.OrderService), new(*order.OrderServiceImpl)),
+
+	order.ProvideOrderRepositoryMySQL,
+	wire.Bind(new(order.OrderRepository), new(*order.OrderRepositoryMySQL)),
+)
+
 // Wiring for all domains.
 var domains = wire.NewSet(
 	domainFooBarBaz,
 	domainProduct,
+	domainOrder,
 	domainCart,
 )
 

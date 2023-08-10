@@ -32,6 +32,7 @@ func (h *CartHandler) Router(r chi.Router) {
 			r.Use(h.AuthMiddleware.ValidateJWT)
 			r.Post("/", h.AddToCart)
 			r.Get("/", h.ResolveCartByUserID)
+			r.Post("/{cart_id}/checkout", h.Checkout)
 		})
 
 
@@ -95,4 +96,40 @@ func (h *CartHandler) ResolveCartByUserID(w http.ResponseWriter, r *http.Request
 
 	response.WithJSON(w, http.StatusCreated, cart)
 	
+}
+
+func (h *CartHandler) Checkout(w http.ResponseWriter, r *http.Request)  {
+	cartString := chi.URLParam(r, "cart_id")
+	cartID, err := uuid.FromString(cartString)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var requestFormat cart.CheckoutRequestFormat
+	err = decoder.Decode(&requestFormat)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	claims, ok := r.Context().Value(middleware.ClaimsKey("claims")).(shared.Claims)
+	if !ok {
+		response.WithMessage(w, http.StatusUnauthorized, "Unauthorized")
+	}
+
+	id, err := uuid.FromString(claims.UserId)
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
+
+	order, err := h.CartService.Checkout(requestFormat, id, cartID )
+	if err != nil {
+		response.WithError(w, err)
+		return
+	}
+
+	response.WithJSON(w, http.StatusCreated, order)
 }

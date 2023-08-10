@@ -30,6 +30,7 @@ func (c *Cart) AttachItems(items []CartItem) Cart {
 			c.Items = append(c.Items, item)
 		}
 	}
+
 	return *c
 }
 
@@ -64,7 +65,6 @@ func (c *Cart) Update(userID uuid.UUID) (err error){
 
 	c.Recalculate()
 	err = c.Validate()
-
 	return
 }
 
@@ -98,7 +98,7 @@ type CartRequestFormat struct {
 
 type CartResponseFormat struct {
 	ID  			uuid.UUID		`json:"id" validate:"required"`
-	UserID  		uuid.UUID		`json:"userID" validate:"required"`
+	UserID  		uuid.UUID		`json:"user_id" validate:"required"`
 	CreatedAt     	time.Time   	`json:"created_at" validate:"required"`
 	CreatedBy     	uuid.UUID   	`json:"created_by" validate:"required"`
 	UpdatedAt     	null.Time   	`json:"updated_at"`
@@ -172,7 +172,8 @@ func (ci *CartItem) ToResponseFormat() CartItemResponseFormat {
 		CartID: 		ci.CartID,
 		ProductID:		ci.ProductID,
 		Quantity: 		ci.Quantity,
-		UnitPrice:      ci.UnitPrice,	
+		UnitPrice:      ci.UnitPrice,
+		TotalPrice:  	ci.TotalPrice,	
 		CreatedAt:      ci.CreatedAt,
 		CreatedBy:     	ci.CreatedBy,
 		UpdatedAt:      ci.UpdatedAt,
@@ -207,6 +208,26 @@ type CartItemResponseFormat struct {
 
 
 
+type CheckoutRequestFormat struct {
+	Address 		string 		`json:"address" validate:"required"`
+	ProductIDs	[]uuid.UUID    `json:"cart_items" validate:"required"`
+}
 
 
+
+
+
+type CartItemJoin struct {
+	CartID			uuid.UUID		`db:"cart_id" validate:"required"`
+	ProductID		uuid.UUID		`db:"product_id" validate:"required"`
+	Quantity		int			`db:"quantity"`
+	UnitPrice		float64		`db:"unit_price"`
+	Stock			int			`db:"stock"`
+	CreatedAt		time.Time   `db:"created_at" validate:"required"`
+	CreatedBy		uuid.UUID   `db:"created_by" validate:"required"`
+	UpdatedAt		null.Time   `db:"updated_at"`
+	UpdatedBy		nuuid.NUUID `db:"updated_by"`
+	DeletedAt		null.Time   `db:"deleted_at"`
+	DeletedBy		nuuid.NUUID `db:"deleted_by"`
+}
 
