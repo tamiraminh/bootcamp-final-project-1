@@ -83,10 +83,11 @@ var authMiddleware = wire.NewSet(
 
 // Wiring for HTTP routing.
 var routing = wire.NewSet(
-	wire.Struct(new(router.DomainHandlers), "FooBarBazHandler", "ProductHandler", "CartHandler"),
+	wire.Struct(new(router.DomainHandlers), "FooBarBazHandler", "ProductHandler", "CartHandler", "OrderHandler"),
 	handlers.ProvideFooBarBazHandler,
 	handlers.ProvideProductHandler,
 	handlers.ProvideCartHandler,
+	handlers.ProvideOrderHandler,
 	router.ProvideRouter,
 )
 

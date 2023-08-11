@@ -89,6 +89,7 @@ var cartQueries = struct {
 
 type CartRepository interface {
 	CreateCart(cart Cart) (err error)
+	CreateCartByUserID(userID uuid.UUID) (cart Cart, err error)
 	UpdateCart(cart Cart) (err error)
 	CreateCartItem(cartItem CartItem) (err error)
 	UpdateCartItem(cartItem CartItem) (err error)
@@ -137,6 +138,33 @@ func (r *CartRepositoryMySQL) CreateCart(cart Cart) (err error) {
 	})
 }
 
+func (r *CartRepositoryMySQL) CreateCartByUserID(userID uuid.UUID) (cart Cart,err error)  {
+	_, err = r.ResolveCartByUserID(userID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	cart, err = cart.NewCart(userID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+	err = r.DB.WithTransaction(func(tx *sqlx.Tx, e chan error) {
+		if err := r.txCreate(tx, cart); err != nil {
+			e <- err
+			return
+		}
+
+		e <- nil
+	})
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+	return
+}
+
 func (r *CartRepositoryMySQL) UpdateCart(cart Cart) (err error) {
 	exists, err := r.ExistsByID(cart.ID)
 	if err != nil {
@@ -158,9 +186,6 @@ func (r *CartRepositoryMySQL) UpdateCart(cart Cart) (err error) {
 
 		e <- nil
 	})
-
-
-
 }
 
 

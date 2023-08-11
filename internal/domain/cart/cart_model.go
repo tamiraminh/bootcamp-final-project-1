@@ -91,6 +91,20 @@ func (c Cart) ToResponseFormat() CartResponseFormat {
 	return resp
 }
 
+func (c Cart) NewCart(userID uuid.UUID) (newCart Cart, err error){
+	cartID, err := uuid.NewV4()
+	if err != nil {
+		return
+	}
+	newCart = Cart{
+		ID: cartID,
+		UserID: userID,
+		CreatedAt: time.Now(),
+		CreatedBy: userID,
+		Items: make([]CartItem, 0),
+	}
+	return
+}
 
 type CartRequestFormat struct {
 
@@ -140,8 +154,8 @@ func (ci *CartItem) Recalculate() {
 
 
 
-func (ci CartItem) NewFromRequestFormat(req CartItemRequestFormat, userID uuid.UUID, cartID uuid.UUID) (fooItem CartItem, err error) {
-	fooItem = CartItem{
+func (ci CartItem) NewFromRequestFormat(req CartItemRequestFormat, userID uuid.UUID, cartID uuid.UUID) (cartItem CartItem, err error) {
+	cartItem = CartItem{
 		CartID: cartID,
 		ProductID: req.ProductID,
 		Quantity: req.Quantity,
@@ -150,6 +164,17 @@ func (ci CartItem) NewFromRequestFormat(req CartItemRequestFormat, userID uuid.U
 	}
 
 	err = ci.Validate()
+	return
+}
+
+func (ci CartItem) newCartItem(cartID uuid.UUID, req CartItemRequestFormat, userID uuid.UUID) (newCartItem CartItem) {
+	newCartItem = CartItem{
+		CartID:    cartID,
+		ProductID: req.ProductID,
+		Quantity:  req.Quantity,
+		CreatedAt: time.Now(),
+		CreatedBy: userID,
+	}
 	return
 }
 

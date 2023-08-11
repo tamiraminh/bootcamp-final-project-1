@@ -3,7 +3,7 @@ package cart
 import (
 	"database/sql"
 	"errors"
-	"time"
+	"fmt"
 
 	"github.com/evermos/boilerplate-go/configs"
 	"github.com/evermos/boilerplate-go/internal/domain/order"
@@ -37,103 +37,40 @@ func ProvideCartServiceImpl(cartRepository CartRepository, conf *configs.Config,
 	return s
 }
 
-func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID uuid.UUID) (cart Cart, err error)  {
-	productID := requestFormat.ProductID
-	quantity := requestFormat.Quantity
-
-	productCheck , err := s.ProductService.ResolveProductByID(productID)
+func (s *CartServiceImpl) AddToCart(req CartItemRequestFormat, userID uuid.UUID) (cart Cart, err error) {
+	// Check product availability and stock
+	product, err := s.ProductService.ResolveProductByID(req.ProductID)
 	if err != nil {
 		logger.ErrorWithStack(err)
 		return
 	}
-	if productCheck.Stock < int64(quantity) {
-		err = failure.BadRequestFromString("Quantity cannot greater than stock")
+	if product.Stock < int64(req.Quantity) {
+		err = failure.BadRequestFromString("Quantity cannot be greater than stock")
 		return
 	}
 
-	cart, err = s.CartRepository.ResolveCartByUserID(userID)
-	if err != sql.ErrNoRows && err != nil {
-		logger.ErrorWithStack(err)
-		return
-	} 
-	if err == sql.ErrNoRows {
-		cartID, errUUID := uuid.NewV4()
-		if errUUID != nil {
-			logger.ErrorWithStack(errUUID)
-			return 
-		}
-	
-		err = s.CartRepository.CreateCart(Cart{
-			ID: cartID,
-			UserID: userID,
-			CreatedAt: time.Now(),
-			CreatedBy: userID,
-		})
-		if err != nil {
-			logger.ErrorWithStack(err)
-			return
-		}
-	} 
-
-	existingItem, err := s.CartRepository.ResolveCartItemByProductID(cart.ID, productID)
+	// Resolve or create cart for the user
+	cart, err = s.resolveOrCreateCart(userID)
 	if err != nil {
-		logger.ErrorWithStack(err)
 		return
 	}
 
-	if existingItem == nil {
-		if quantity <= 0 {
-			err = failure.BadRequest(errors.New("quantity not valid"))
-			return
-		}
-		
-		err = s.CartRepository.CreateCartItem(CartItem{
-			CartID: cart.ID,
-			ProductID: productID,
-			Quantity: quantity,
-			CreatedAt: time.Now(),
-			CreatedBy: userID,
-		})
-		if err != nil {
-			logger.ErrorWithStack(err)
-			return
-		}
-
-
-	} else {
-		err = existingItem[0].Update(CartItem{ 
-			CartID: cart.ID,
-			ProductID: productID,
-			Quantity: quantity,
-		}, userID)
-		if err != nil {
-			logger.ErrorWithStack(err)
-			return
-		}
-
-		err = s.CartRepository.UpdateCartItem(existingItem[0])
-		if err != nil {
-			logger.ErrorWithStack(err)
-			return
-		}
-	}
-
-	items, err := s.CartRepository.ResolveCartItemsJoinProduct(cart.ID)
+	// Handle cart item addition or update
+	err = s.handleCartItem(cart, req , userID)
 	if err != nil {
-		logger.ErrorWithStack(err)
 		return
 	}
 
-	cart.AttachItems(items)
-	cart.Update(userID)
-	err = s.CartRepository.UpdateCart(cart)
+	// Update cart and return
+	err = s.updateCart(&cart, userID)
 	if err != nil {
-		logger.ErrorWithStack(err)
 		return
 	}
 
 	return
 }
+
+
 
 
 func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err error)  {
@@ -156,87 +93,48 @@ func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err 
 }
 
 func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID uuid.UUID, cartID uuid.UUID, role string) (newOrder order.Order, err error) {
-	exists, err := s.CartRepository.ExistsByID(cartID)
-	if err != nil {
-		return
-	}
-	if !exists {
+	// Check if cart exists
+	if exists, err := s.CartRepository.ExistsByID(cartID); err != nil {
+		return newOrder, err
+	} else if !exists {
 		err = failure.BadRequestFromString("cart not found")
 		logger.ErrorWithStack(err)
-		return
+		return newOrder, err
 	}
 
-	isHaveAccess, err := s.checkCartOwner(cartID, userID, role)
+	// Check cart owner access
+	if isHaveAccess, err := s.checkCartOwner(cartID, userID, role); err != nil {
+		return newOrder, err
+	} else if !isHaveAccess {
+		err = failure.Unauthorized("unauthorized")
+		return newOrder, err
+	}
+
 	if err != nil {
-		return
-	}
-	if !isHaveAccess {
-		err = failure.Unauthorized("untauthorized")
-		return
+		return newOrder, err
 	}
 
-	orderID, err := uuid.NewV4()
+	newOrder, err = order.Order{}.NewOrder(userID, requestFormat.Address)
 	if err != nil {
-		return
+		return newOrder, err
 	}
-	newOrder = order.Order{
-		ID: orderID,
-		UserID: userID,
-		Address: requestFormat.Address,
-		Status: "pending",
-		CreatedAt: time.Now(),
-		CreatedBy: userID,
+	orderItems, err := s.createOrderItems(cartID, userID, newOrder.ID, requestFormat.ProductIDs)
+	if err != nil {
+		return newOrder, err
 	}
-
-	var orderItems = []order.OrderItem{}
-	for _, item := range requestFormat.ProductIDs {
-		cartItem, err := s.CartRepository.ResolveCartItemJoinProduct(cartID, item)
-		if err != nil {
-			logger.ErrorWithStack(err)
-			return order.Order{}, err
-		}
-
-		if cartItem.Quantity > cartItem.Stock {
-			log.Error().Msg("out of stock")
-			err = errors.New("out of stock")
-			return order.Order{}, err
-		}
-		
-		orderItem := order.OrderItem{
-			OrderID: orderID,
-			ProductID: cartItem.ProductID,
-			Quantity: cartItem.Quantity,
-			UnitPrice: cartItem.UnitPrice,
-			CreatedAt: time.Now(),
-			CreatedBy: userID,	
-		}
-		orderItems = append(orderItems, orderItem)
-	}
-
+	fmt.Println(orderItems)
 	newOrder.AttachItems(orderItems)
 	newOrder.Recalculate()
 
-	// create order
-	err = s.OrderService.CreateOrder(newOrder)
-	if err != nil {
-		return
+	if err = s.createOrderAndHandleCart(cartID, newOrder, orderItems); err != nil {
+		return newOrder, err
 	}
-	// create order items and update stock 
-	for _, orderItem := range newOrder.Items {
-		err = s.OrderService.CreateOrderItem(orderItem)
-		if err != nil {
-			return
-		}
-		// hard delete cart_item 
-		err = s.CartRepository.DeleteCartItem(cartID, orderItem.ProductID)
-		if err != nil {
-			return
-		}
-	}	
 
-	return
-
+	return newOrder, nil
 }
+
+
+// internal function
 
 func (s *CartServiceImpl) checkCartOwner(cartID uuid.UUID, userID uuid.UUID, role string) (isHaveAccess bool, err error) {
 	cart, err := s.CartRepository.ResolveCartByID(cartID)
@@ -248,7 +146,103 @@ func (s *CartServiceImpl) checkCartOwner(cartID uuid.UUID, userID uuid.UUID, rol
 		return
 	}
 	return true, err
+}
+
+func (s *CartServiceImpl) resolveOrCreateCart(userID uuid.UUID) (cart Cart, err error) {
+	cart, err = s.CartRepository.ResolveCartByUserID(userID)
+	if err == sql.ErrNoRows {
+		cart, err = s.CartRepository.CreateCartByUserID(userID)
+	}
+	return
+}
+
+func (s *CartServiceImpl) handleCartItem(cart Cart, req CartItemRequestFormat, userID uuid.UUID) (err error) {
+	existingItem, err := s.CartRepository.ResolveCartItemByProductID(cart.ID, req.ProductID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	if len(existingItem) == 0 {
+		if req.Quantity <= 0 {
+			err = failure.BadRequest(errors.New("quantity not valid"))
+			return
+		}
+
+		newCartItem := CartItem{}.newCartItem(cart.ID, req, userID)
+
+		err = s.CartRepository.CreateCartItem(newCartItem)
+		if err != nil {
+			return
+		}
+
+	} else {
+		updateCartItem := CartItem{}.newCartItem(cart.ID, req, userID)
+		err = existingItem[0].Update(updateCartItem, cart.UserID)
+		if err == nil {
+			err = s.CartRepository.UpdateCartItem(existingItem[0])
+		}
+	}
+	return
+}
 
 
-	
+func (s *CartServiceImpl) updateCart(cart *Cart, userID uuid.UUID) (err error) {
+	items, err := s.CartRepository.ResolveCartItemsJoinProduct(cart.ID)
+	if err != nil {
+		logger.ErrorWithStack(err)
+		return
+	}
+
+	cart.AttachItems(items)
+	cart.Update(userID)
+
+	err = s.CartRepository.UpdateCart(*cart)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return
+}
+
+func (s *CartServiceImpl) createOrderItems(cartID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, productIDs []uuid.UUID) ([]order.OrderItem, error) {
+	var orderItems []order.OrderItem
+
+	for _, item := range productIDs {
+		cartItem, err := s.CartRepository.ResolveCartItemJoinProduct(cartID, item)
+		if err != nil {
+			logger.ErrorWithStack(err)
+			return nil, err
+		}
+
+		if cartItem.Quantity > cartItem.Stock {
+			err = errors.New("out of stock")
+			log.Error().Msg("out of stock")
+			return nil, err
+		}
+
+		orderItem := order.OrderItem{}.NewOrderItem(orderID, userID, cartItem.ProductID, cartItem.Quantity, cartItem.UnitPrice)
+		orderItems = append(orderItems, orderItem)
+	}
+
+	return orderItems, nil
+}
+
+
+func (s *CartServiceImpl) createOrderAndHandleCart(cartID uuid.UUID, newOrder order.Order, orderItems []order.OrderItem) (err error) {
+	// Create order
+	if err := s.OrderService.CreateOrder(newOrder); err != nil {
+		return err
+	}
+	// Create order items and update stock
+	for _, orderItem := range orderItems {
+		if err := s.OrderService.CreateOrderItem(orderItem); err != nil {
+			return err
+		}
+
+		if err := s.CartRepository.DeleteCartItem(cartID, orderItem.ProductID); err != nil {
+			return err
+		}
+	}
+
+	return
 }

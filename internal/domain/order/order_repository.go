@@ -66,6 +66,7 @@ type OrderRepository interface {
 	CreateOrder(order Order) (err error)
 	ExistsByID(id uuid.UUID) (exists bool, err error)
 	CreateOrderItem(oi OrderItem) (err error)
+	ResolveAllOrder(userID uuid.UUID, role string, page int,limit int) (orders []Order, err error)
 
 }
 
@@ -123,6 +124,28 @@ func (r *OrderRepositoryMySQL) CreateOrderItem(oi OrderItem) (err error)   {
 
 		e <- nil
 	})
+}
+
+func (r *OrderRepositoryMySQL) ResolveAllOrder(userID uuid.UUID, role string, page int,limit int) (orders []Order, err error)  {
+	if role != "admin"{
+		err = r.DB.Read.Select(
+			&orders,
+			"SELECT * FROM atc_order WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?", userID, limit, (page)*limit)
+		if err != nil {
+			logger.ErrorWithStack(err)
+		}
+
+		return 
+	}
+
+	err = r.DB.Read.Select(
+		&orders,
+		"SELECT * FROM atc_order ORDER BY created_at DESC LIMIT ? OFFSET ?", limit, (page)*limit)
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+
+	return
 }
 
 func (r *OrderRepositoryMySQL) txCreate(tx *sqlx.Tx, order Order) (err error) {
