@@ -3,11 +3,13 @@ package order
 import (
 	"github.com/evermos/boilerplate-go/configs"
 	"github.com/evermos/boilerplate-go/shared/failure"
+	"github.com/gofrs/uuid"
 )
 
 type OrderService interface {
 	CreateOrder(order Order) (err error)
 	CreateOrderItem(order OrderItem) (err error)
+	ResolveAllOrder(userID uuid.UUID, role string, page int, limit int)(orders []Order, err error) 
 }
 
 type OrderServiceImpl struct {
@@ -38,5 +40,14 @@ func (s *OrderServiceImpl) CreateOrderItem(orderItem OrderItem) (err error)  {
 		return failure.BadRequest(err)
 	}
 	
+	return 
+}
+
+func (s *OrderServiceImpl) ResolveAllOrder(userID uuid.UUID, role string, page int, limit int)(orders []Order, err error) {
+	orders, err = s.OrderRepository.ResolveAllOrder(userID, role, page, limit)
+	if err != nil{
+		return
+	}
+
 	return 
 }

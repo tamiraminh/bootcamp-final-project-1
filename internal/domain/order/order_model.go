@@ -60,6 +60,23 @@ func (c *Order) Validate() (err error) {
 	return validator.Struct(c)
 }
 
+func (o Order) NewOrder(userID uuid.UUID, address string) (newOrder Order, err error)  {
+	orderID, err := uuid.NewV4()
+	if err != nil {
+		return
+	}
+
+	newOrder = Order{
+		ID: orderID,
+		UserID: userID,
+		Address:   address,
+		Status:    "pending",
+		CreatedAt: time.Now(),
+		CreatedBy: userID,
+	}
+	return
+}
+
 func (o Order) ToResponseFormat() OrderResponseFormat {
 	resp := OrderResponseFormat{
 		ID:            	o.ID,
@@ -128,6 +145,18 @@ func (o *OrderItem) Validate() (err error) {
 
 func (o *OrderItem) Recalculate() {
 	o.TotalPrice = float64(o.Quantity) * o.UnitPrice
+}
+
+func (oi OrderItem) NewOrderItem(orderID uuid.UUID, userID uuid.UUID, productID uuid.UUID, quantity int, unitPrice float64) (newOrderItem OrderItem){
+	newOrderItem = OrderItem{
+		OrderID:    orderID,
+		ProductID:  productID,
+		Quantity:   quantity,
+		UnitPrice:  unitPrice,
+		CreatedAt:  time.Now(),
+		CreatedBy:  userID,
+	}
+	return
 }
 
 
