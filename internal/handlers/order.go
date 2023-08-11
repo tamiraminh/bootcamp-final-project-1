@@ -36,7 +36,6 @@ func (h *OrderHandler) Router(r chi.Router) {
 	})
 }
 
-
 // @Summary Resolve All Order align with role
 // @Description This endpoint resolves All order which align with role.
 // @Tags v1/Orders
