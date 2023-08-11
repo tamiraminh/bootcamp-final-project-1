@@ -41,7 +41,6 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 	productID := requestFormat.ProductID
 	quantity := requestFormat.Quantity
 
-
 	productCheck , err := s.ProductService.ResolveProductByID(productID)
 	if err != nil {
 		logger.ErrorWithStack(err)
@@ -64,20 +63,17 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 			return 
 		}
 	
-		cart = Cart{
+		err = s.CartRepository.CreateCart(Cart{
 			ID: cartID,
 			UserID: userID,
 			CreatedAt: time.Now(),
 			CreatedBy: userID,
-		}
-	
-		err = s.CartRepository.CreateCart(cart)
+		})
 		if err != nil {
 			logger.ErrorWithStack(err)
 			return
 		}
 	} 
-
 
 	existingItem, err := s.CartRepository.ResolveCartItemByProductID(cart.ID, productID)
 	if err != nil {
@@ -90,15 +86,14 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 			err = failure.BadRequest(errors.New("quantity not valid"))
 			return
 		}
-		cartItem := CartItem{
+		
+		err = s.CartRepository.CreateCartItem(CartItem{
 			CartID: cart.ID,
 			ProductID: productID,
 			Quantity: quantity,
 			CreatedAt: time.Now(),
 			CreatedBy: userID,
-		}
-
-		err = s.CartRepository.CreateCartItem(cartItem)
+		})
 		if err != nil {
 			logger.ErrorWithStack(err)
 			return
@@ -116,7 +111,6 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 			return
 		}
 
-
 		err = s.CartRepository.UpdateCartItem(existingItem[0])
 		if err != nil {
 			logger.ErrorWithStack(err)
@@ -124,20 +118,10 @@ func (s *CartServiceImpl) AddToCart(requestFormat CartItemRequestFormat, userID 
 		}
 	}
 
-	items, err := s.CartRepository.ResolveCartItemsByCartID(cart.ID)
+	items, err := s.CartRepository.ResolveCartItemsJoinProduct(cart.ID)
 	if err != nil {
 		logger.ErrorWithStack(err)
 		return
-	}
-
-	for i := 0; i < len(items) ; i++ {
-		product, errProduct := s.ProductService.ResolveProductByID(items[i].ProductID)
-		if errProduct != nil {
-			logger.ErrorWithStack(errProduct)
-			return
-		}
-		items[i].UnitPrice = product.Price
-		items[i].Recalculate()
 	}
 
 	cart.AttachItems(items)
@@ -160,20 +144,10 @@ func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err 
 	} 
 
 
-	items, err := s.CartRepository.ResolveCartItemsByCartID(cart.ID)
+	items, err := s.CartRepository.ResolveCartItemsJoinProduct(cart.ID)
 	if err != nil {
 		logger.ErrorWithStack(err)
 		return
-	}
-
-	for i := 0; i < len(items) ; i++ {
-		product, errProduct := s.ProductService.ResolveProductByID(items[i].ProductID)
-		if errProduct != nil {
-			logger.ErrorWithStack(errProduct)
-			return
-		}
-		items[i].UnitPrice = product.Price
-		items[i].Recalculate()
 	}
 
 	cart.AttachItems(items)
@@ -182,13 +156,6 @@ func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err 
 }
 
 func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID uuid.UUID, cartID uuid.UUID) (newOrder order.Order, err error) {
-	// cek cartID
-	// get cart_items
-	// cek stok produk dengan quantiti cart items
-	// create order
-	// create orderitems
-	// hitung total
-	// response 
 	exists, err := s.CartRepository.ExistsByID(cartID)
 	if err != nil {
 		return
@@ -198,6 +165,7 @@ func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID u
 		logger.ErrorWithStack(err)
 		return
 	}
+
 
 	orderID, err := uuid.NewV4()
 	if err != nil {
@@ -222,6 +190,7 @@ func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID u
 
 		if cartItem.Quantity > cartItem.Stock {
 			log.Error().Msg("out of stock")
+			err = errors.New("out of stock")
 			return order.Order{}, err
 		}
 		

@@ -100,6 +100,7 @@ type CartRepository interface {
 	ResolveCartItemsByCartID(cartID uuid.UUID) (CartItems []CartItem, err error)
 	ResolveCartByID(id uuid.UUID) (cart Cart, err error)
 	ResolveCartItemJoinProduct(cartID uuid.UUID, productID uuid.UUID) (cartItem CartItemJoin, err error)
+	ResolveCartItemsJoinProduct(cartID uuid.UUID) (cartItem []CartItem, err error)
 }
 
 type CartRepositoryMySQL struct {
@@ -263,6 +264,17 @@ func (r *CartRepositoryMySQL) ResolveCartItemJoinProduct(cartID uuid.UUID, produ
 		&cartItem,
 		"SELECT cart_id, product_id, quantity, price as unit_price, stock, aci.created_at , aci.created_by, aci.updated_at, aci.updated_by , aci.deleted_at , aci.deleted_by  FROM atc_cart_item aci  JOIN atc_product ap ON aci.product_id = ap.id WHERE cart_id = ? AND product_id = ?",
 		cartID.String(), productID.String())
+	if err != nil {
+		logger.ErrorWithStack(err)
+	}
+	return
+}
+
+func (r *CartRepositoryMySQL) ResolveCartItemsJoinProduct(cartID uuid.UUID) (cartItem []CartItem, err error) {
+	err = r.DB.Read.Select(
+		&cartItem,
+		"SELECT cart_id, product_id, quantity, price as unit_price, price*quantity as total_price, stock, aci.created_at , aci.created_by, aci.updated_at, aci.updated_by , aci.deleted_at , aci.deleted_by  FROM atc_cart_item aci  JOIN atc_product ap ON aci.product_id = ap.id WHERE cart_id = ? ",
+		cartID.String())
 	if err != nil {
 		logger.ErrorWithStack(err)
 	}
