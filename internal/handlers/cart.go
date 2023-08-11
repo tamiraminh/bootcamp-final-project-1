@@ -41,7 +41,7 @@ func (h *CartHandler) Router(r chi.Router) {
 
 // @Summary Add product to cart.
 // @Description This endpoint is to add product to cart.
-// @Tags v1/Cart
+// @Tags v1/Carts
 // @Security JWTToken
 // @Param Cart body cart.CartItemRequestFormat true "make add to cart request"
 // @Produce json
@@ -87,7 +87,7 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Resolve Cart by user ID
 // @Description This endpoint resolves a Cart by its user ID.
-// @Tags v1/Cart
+// @Tags v1/Carts
 // @Security JWTToken
 // @Produce json
 // @Success 200 {object} response.Base{data=cart.CartResponseFormat}
@@ -121,7 +121,7 @@ func (h *CartHandler) ResolveCartByUserID(w http.ResponseWriter, r *http.Request
 
 // @Summary checkout selected Product.
 // @Description This endpoint checkout selected product in cart.
-// @Tags v1/Cart
+// @Tags v1/Carts
 // @Security JWTToken
 // @Param cart_id path string true "cartID"
 // @Param Order body cart.CheckoutRequestFormat true "make order request"

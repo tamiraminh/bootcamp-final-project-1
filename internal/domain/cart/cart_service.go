@@ -118,6 +118,7 @@ func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID u
 	if err != nil {
 		return newOrder, err
 	}
+
 	orderItems, err := s.createOrderItems(cartID, userID, newOrder.ID, requestFormat.ProductIDs)
 	if err != nil {
 		return newOrder, err
@@ -207,6 +208,7 @@ func (s *CartServiceImpl) updateCart(cart *Cart, userID uuid.UUID) (err error) {
 func (s *CartServiceImpl) createOrderItems(cartID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, productIDs []uuid.UUID) ([]order.OrderItem, error) {
 	var orderItems []order.OrderItem
 
+
 	for _, item := range productIDs {
 		cartItem, err := s.CartRepository.ResolveCartItemJoinProduct(cartID, item)
 		if err != nil {
@@ -246,3 +248,4 @@ func (s *CartServiceImpl) createOrderAndHandleCart(cartID uuid.UUID, newOrder or
 
 	return
 }
+

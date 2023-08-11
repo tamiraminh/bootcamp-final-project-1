@@ -44,7 +44,7 @@ func (h *ProductHandler) Router(r chi.Router) {
 // CreateFoo creates a new Product.
 // @Summary Create a new Product.
 // @Description This endpoint creates a new Product.
-// @Tags v1/Product
+// @Tags v1/Products
 // @Security JWTToken
 // @Param foo body product.ProductRequestFormat true "The Product to be created."
 // @Produce json
@@ -85,7 +85,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Resolve All Products
 // @Description This endpoint resolves All products with pagination page and limit.
-// @Tags v1/Product
+// @Tags v1/Products
 // @Param page query int true "must greater or equeal to zero"
 // @Param limit query int true "must greater than zero"
 // @Produce json
