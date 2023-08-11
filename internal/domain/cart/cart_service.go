@@ -17,7 +17,7 @@ import (
 type CartService interface {
 	AddToCart(requestFormat CartItemRequestFormat, userID uuid.UUID) (cart Cart, err error)
 	ResolveCartByUserID(userID uuid.UUID) (cart Cart, err error)
-	Checkout(requestFormat CheckoutRequestFormat, userID uuid.UUID, cartID uuid.UUID) (order order.Order, err error)
+	Checkout(requestFormat CheckoutRequestFormat, userID uuid.UUID, cartID uuid.UUID, role string) (order order.Order, err error)
 }
 
 type CartServiceImpl struct {
@@ -155,7 +155,7 @@ func (s *CartServiceImpl) ResolveCartByUserID(userID uuid.UUID) (cart Cart, err 
 	return
 }
 
-func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID uuid.UUID, cartID uuid.UUID) (newOrder order.Order, err error) {
+func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID uuid.UUID, cartID uuid.UUID, role string) (newOrder order.Order, err error) {
 	exists, err := s.CartRepository.ExistsByID(cartID)
 	if err != nil {
 		return
@@ -166,6 +166,14 @@ func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID u
 		return
 	}
 
+	isHaveAccess, err := s.checkCartOwner(cartID, userID, role)
+	if err != nil {
+		return
+	}
+	if !isHaveAccess {
+		err = failure.Unauthorized("untauthorized")
+		return
+	}
 
 	orderID, err := uuid.NewV4()
 	if err != nil {
@@ -228,4 +236,19 @@ func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID u
 
 	return
 
+}
+
+func (s *CartServiceImpl) checkCartOwner(cartID uuid.UUID, userID uuid.UUID, role string) (isHaveAccess bool, err error) {
+	cart, err := s.CartRepository.ResolveCartByID(cartID)
+	if err != nil{
+		return
+	}
+	if userID != cart.UserID && role != "admin" {
+		isHaveAccess = false
+		return
+	}
+	return true, err
+
+
+	
 }
