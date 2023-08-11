@@ -36,6 +36,19 @@ func (h *OrderHandler) Router(r chi.Router) {
 	})
 }
 
+
+// @Summary Resolve All Order align with role
+// @Description This endpoint resolves All order which align with role.
+// @Tags v1/Orders
+// @Security JWTToken
+// @Param page query int true "must greater or equeal to zero"
+// @Param limit query int true "must greater than zero"
+// @Produce json
+// @Success 200 {object} response.Base{data=product.ProductResponseFormat}
+// @Failure 400 {object} response.Base
+// @Failure 404 {object} response.Base
+// @Failure 500 {object} response.Base
+// @Router /v1/orders [get]
 func (h *OrderHandler) ResolveAllOrder(w http.ResponseWriter, r *http.Request)  {
 	pageStr := r.URL.Query().Get("page")
 	pageInt, err := strconv.Atoi(pageStr)
