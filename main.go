@@ -10,7 +10,7 @@ import (
 
 var config *configs.Config
 
-//@securityDefinitions.apikey EVMOauthToken
+//@securityDefinitions.apikey JWTToken
 //@in header
 //@name Authorization
 func main() {

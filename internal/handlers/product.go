@@ -41,6 +41,18 @@ func (h *ProductHandler) Router(r chi.Router) {
 	})
 }
 
+// CreateFoo creates a new Product.
+// @Summary Create a new Product.
+// @Description This endpoint creates a new Product.
+// @Tags v1/Product
+// @Security JWTToken
+// @Param foo body product.ProductRequestFormat true "The Product to be created."
+// @Produce json
+// @Success 201 {object} response.Base{data=product.ProductResponseFormat}
+// @Failure 400 {object} response.Base
+// @Failure 409 {object} response.Base
+// @Failure 500 {object} response.Base
+// @Router /v1/products [post]
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var requestFormat product.ProductRequestFormat
@@ -71,6 +83,17 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 
+// @Summary Resolve All Products
+// @Description This endpoint resolves All products with pagination page and limit.
+// @Tags v1/Product
+// @Param page query int true "must greater or equeal to zero"
+// @Param limit query int true "must greater than zero"
+// @Produce json
+// @Success 200 {object} response.Base{data=product.ProductResponseFormat}
+// @Failure 400 {object} response.Base
+// @Failure 404 {object} response.Base
+// @Failure 500 {object} response.Base
+// @Router /v1/products [get]
 func (h *ProductHandler) ResolveAllProducts(w http.ResponseWriter, r *http.Request) {
 	pageStr := r.URL.Query().Get("page")
 	pageInt, err := strconv.Atoi(pageStr)

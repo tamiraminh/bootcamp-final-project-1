@@ -114,8 +114,9 @@ type CartItem struct {
 	CartID			uuid.UUID		`db:"cart_id" validate:"required"`
 	ProductID		uuid.UUID		`db:"product_id" validate:"required"`
 	Quantity		int			`db:"quantity"`
-	UnitPrice		float64		`db:"-"`
-	TotalPrice		float64		`db:"-"`
+	UnitPrice		float64		`db:"unit_price"`
+	TotalPrice		float64		`db:"total_price"`
+	ProductStock	int			`db:"stock"`
 	CreatedAt		time.Time   `db:"created_at" validate:"required"`
 	CreatedBy		uuid.UUID   `db:"created_by" validate:"required"`
 	UpdatedAt		null.Time   `db:"updated_at"`
