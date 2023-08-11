@@ -3,7 +3,6 @@ package cart
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/evermos/boilerplate-go/configs"
 	"github.com/evermos/boilerplate-go/internal/domain/order"
@@ -123,7 +122,7 @@ func (s *CartServiceImpl) Checkout(requestFormat CheckoutRequestFormat, userID u
 	if err != nil {
 		return newOrder, err
 	}
-	fmt.Println(orderItems)
+
 	newOrder.AttachItems(orderItems)
 	newOrder.Recalculate()
 
