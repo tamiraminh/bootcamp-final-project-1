@@ -79,7 +79,10 @@ func (h *OrderHandler) ResolveAllOrder(w http.ResponseWriter, r *http.Request)  
 	}
 
 	orders, err := h.OrderService.ResolveAllOrder(id, claims.Role, pageInt, limitInt)
-
+	if err != nil {
+		response.WithError(w, failure.BadRequest(err))
+		return
+	}
 
 	response.WithJSON(w, http.StatusOK, orders)
 }
