@@ -140,7 +140,7 @@ func (r *CartRepositoryMySQL) CreateCart(cart Cart) (err error) {
 
 func (r *CartRepositoryMySQL) CreateCartByUserID(userID uuid.UUID) (cart Cart,err error)  {
 	_, err = r.ResolveCartByUserID(userID)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		logger.ErrorWithStack(err)
 		return
 	}
@@ -240,7 +240,7 @@ func (r *CartRepositoryMySQL) ResolveCartByUserID(id uuid.UUID) (cart Cart, err 
 		&cart,
 		cartQueries.selectCart+" WHERE user_id = ?",
 		id.String())
-	if err != nil && err == sql.ErrNoRows {
+	if err != nil && err != sql.ErrNoRows {
 		log.Info().Msg(err.Error())
 		return
 	}
