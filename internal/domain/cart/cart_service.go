@@ -49,9 +49,16 @@ func (s *CartServiceImpl) AddToCart(req CartItemRequestFormat, userID uuid.UUID)
 	}
 
 	// Resolve or create cart for the user
-	cart, err = s.resolveOrCreateCart(userID)
+	cart, err = s.CartRepository.ResolveCartByUserID(userID)
+
 	if err != nil && err != sql.ErrNoRows {
 		return
+	}
+	if err == sql.ErrNoRows {
+		cart, err = s.CartRepository.CreateCartByUserID(userID)
+		if err != nil {
+			return
+		}
 	}
 
 	// Handle cart item addition or update
@@ -148,13 +155,6 @@ func (s *CartServiceImpl) checkCartOwner(cartID uuid.UUID, userID uuid.UUID, rol
 	return true, err
 }
 
-func (s *CartServiceImpl) resolveOrCreateCart(userID uuid.UUID) (cart Cart, err error) {
-	cart, err = s.CartRepository.ResolveCartByUserID(userID)
-	if err == sql.ErrNoRows {
-		cart, err = s.CartRepository.CreateCartByUserID(userID)
-	}
-	return
-}
 
 func (s *CartServiceImpl) handleCartItem(cart Cart, req CartItemRequestFormat, userID uuid.UUID) (err error) {
 	existingItem, err := s.CartRepository.ResolveCartItemByProductID(cart.ID, req.ProductID)
