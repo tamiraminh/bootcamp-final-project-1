@@ -50,6 +50,7 @@ func (s *CartServiceImpl) AddToCart(req CartItemRequestFormat, userID uuid.UUID)
 
 	// Resolve or create cart for the user
 	cart, err = s.CartRepository.ResolveCartByUserID(userID)
+
 	if err != nil && err != sql.ErrNoRows {
 		return
 	}
